@@ -77,10 +77,10 @@ title('dist_theta_phi')
 % surf(theta',phi',dist')
 
 %三维点生成mesh
-tri=delaunay(theta,phi);
-figure
-trimesh(tri,theta,phi,dist);
-TO = triangulation(tri,theta,phi,dist');
+% tri=delaunay(theta,phi);
+% figure
+% trimesh(tri,theta,phi,dist);
+% TO = triangulation(tri,theta,phi,dist');
 
 %找谷
 %周期性延拓
@@ -98,10 +98,29 @@ end
 % trimesh(tri,distMpro);
 % fx = gradient(dist)
 tri=delaunay(distMpro(:,1),distMpro(:,2));
-trimesh(tri,distMpro(:,1),distMpro(:,2),distMpro(:,3));
+% trimesh(tri,distMpro(:,1),distMpro(:,2),distMpro(:,3));
+[zx,zy] = trigradient(distMpro(:,1),distMpro(:,2),distMpro(:,3),tri); 
+z = sqrt(zx.^2+zy.^2);
+
 figure;
-pcshow(distMpro,"MarkerSize",40);
+pcshow(distMpro,z,"MarkerSize",100);
 title('distMpro')
+
+
+
+z_center=z(size(X,1)*4+1:size(X,1)*5,:);
+
+figure;
+pcshow(distM,z_center,"MarkerSize",100);
+title('distMpro')
+
+
+
+
+% hold on
+% quiver3(distMpro(:,1),distMpro(:,2),distMpro(:,3),zx,zy,zeros(size(zx,1),1))
+% hold off
+
 
 
 % map=dist;
