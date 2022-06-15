@@ -1,3 +1,7 @@
+% @Author: Huang Roger
+% @Date:   2022-06-15 15:26:47
+% @Last Modified by:   WU Zihan
+% @Last Modified time: 2022-06-15 19:04:14
 clear
 close all
 addpath(genpath(pwd))
@@ -37,6 +41,8 @@ trisurf(k1,X,Y,Z,'FaceColor','cyan')
 axis equal
 title('convexhull')
 
+
+% 求解Convex Hull平面的方程 Ax + By + Cz = 1
 solve=[];
 for i=1:size(k1,1)
     A=[X(k1(i,1)) Y(k1(i,1)) Z(k1(i,1))
@@ -46,6 +52,7 @@ for i=1:size(k1,1)
     solve(i,1:3)=(A\B)';
 end
 
+% 寻找射影点
 for i=1:length(X)
     for j=1:size(k1,1)
         temp(i,j)=abs(solve(j,1:3)*[X(i) Y(i) Z(i)]'-1)/norm(solve(j,1:3));
@@ -67,7 +74,10 @@ center=sum(points)/size(points,1);
 %     theta(i)=real(asin(Z(i)/r(i)));
 %     phi(i)=real(acos(X(i)/r(i)/cos(theta(i))));
 % end
-tep=points-repmat(center,size(X,1),1);
+
+
+% 把投影点转化为球坐标
+tep=proj-repmat(center,size(X,1),1);
 [phi,theta,~] = cart2sph(tep(:,1),tep(:,2),tep(:,3));
 
 figure
@@ -97,21 +107,23 @@ end
 % tri=delaunay(distMpro);
 % trimesh(tri,distMpro);
 % fx = gradient(dist)
+
+% 延拓后的 mesh
 tri=delaunay(distMpro(:,1),distMpro(:,2));
 % trimesh(tri,distMpro(:,1),distMpro(:,2),distMpro(:,3));
-[zx,zy] = trigradient(distMpro(:,1),distMpro(:,2),distMpro(:,3),tri); 
-z = sqrt(zx.^2+zy.^2);
+[zx,zy] = trigradient(distMpro(:,1),distMpro(:,2),distMpro(:,3),tri); % 梯度
+z = sqrt(zx.^2+zy.^2); % 标量梯度
 
 figure;
 pcshow(distMpro,z,"MarkerSize",100);
-title('distMpro')
+title('梯度温度')
 
 
 
 z_center=z(size(X,1)*4+1:size(X,1)*5,:);% 原距离的标量梯度
-figure
-sorted=sort(z_center);
-plot(1:length(z_center),sorted);
+% figure
+% sorted=sort(z_center);
+% plot(1:length(z_center),sorted);
 
 % figure;
 % pcshow(distM,z_center,"MarkerSize",100);
@@ -119,7 +131,7 @@ plot(1:length(z_center),sorted);
 
 figure;
 scatter3(distM(:,1),distM(:,2),z_center);
-title('distM')
+title('scalar gradient')
 
 % threshold = 0.05;
 % I=find(z_center<threshold & z_center~=0);
@@ -128,17 +140,18 @@ title('distM')
 % scatter3(distM(I,1),distM(I,2),distM(I,3));
 
 threshold = 0.05;
-I=find(z<threshold & z~=0);
-J=find(distMpro(:,3)~=0);
+I=find(z<threshold & z~=0); % index of 梯度小 -> 去掉未连接的点
+J=find(distMpro(:,3)~=0); % index of 高度小 -> 凸包上的点
 I=intersect(I,J);
 
-for i=1:length(I)
-    find(k1==I(i))
-    if I(i)
-end
+% for i=1:length(I)
+%     find(k1==I(i))
+%     if I(i)
+% end
 
 figure;
 scatter3(distMpro(I,1),distMpro(I,2),distMpro(I,3));
+title('zero points height')
 % find(tri=)
 % hold on
 % quiver3(distMpro(:,1),distMpro(:,2),distMpro(:,3),zx,zy,zeros(size(zx,1),1))
@@ -152,17 +165,13 @@ scatter3(distMpro(I,1),distMpro(I,2),distMpro(I,3));
 % plot3(X,Y,Z)
 
 figure;
-pcshow([X(:),Y(:),Z(:)],dist,"MarkerSize",40);
+pcshow(points,dist,"MarkerSize",40);
 title('xyz_dist')
 
 % plot(1:length(dist),dist)
 
 
-%三维图像转XYZ坐标
-function [X,Y,Z]=voxel2XYZ(V)
-    idx=find(V);
-    [X,Y,Z]=ind2sub(size(V),idx);
-end
+
 
 
 
