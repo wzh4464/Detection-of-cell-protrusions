@@ -108,15 +108,38 @@ title('distMpro')
 
 
 
-z_center=z(size(X,1)*4+1:size(X,1)*5,:);
+z_center=z(size(X,1)*4+1:size(X,1)*5,:);% 原距离的标量梯度
+figure
+sorted=sort(z_center);
+plot(1:length(z_center),sorted);
+
+% figure;
+% pcshow(distM,z_center,"MarkerSize",100);
+% title('distMpro')
 
 figure;
-pcshow(distM,z_center,"MarkerSize",100);
-title('distMpro')
+scatter3(distM(:,1),distM(:,2),z_center);
+title('distM')
 
+% threshold = 0.05;
+% I=find(z_center<threshold & z_center~=0);
+% 
+% figure;
+% scatter3(distM(I,1),distM(I,2),distM(I,3));
 
+threshold = 0.05;
+I=find(z<threshold & z~=0);
+J=find(distMpro(:,3)~=0);
+I=intersect(I,J);
 
+for i=1:length(I)
+    find(k1==I(i))
+    if I(i)
+end
 
+figure;
+scatter3(distMpro(I,1),distMpro(I,2),distMpro(I,3));
+% find(tri=)
 % hold on
 % quiver3(distMpro(:,1),distMpro(:,2),distMpro(:,3),zx,zy,zeros(size(zx,1),1))
 % hold off
