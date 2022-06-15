@@ -1,4 +1,5 @@
 clear
+close all
 addpath(genpath(pwd))
 
 %%
@@ -26,7 +27,7 @@ addpath(genpath(pwd))
 
 %%
 %导入三维点，开始计算凸包，计算距离
-load('points.mat')
+load('Jun15cell.mat')
 X=points(:,1);
 Y=points(:,2);
 Z=points(:,3);
@@ -34,6 +35,7 @@ Z=points(:,3);
 figure
 trisurf(k1,X,Y,Z,'FaceColor','cyan')
 axis equal
+title('convexhull')
 
 solve=[];
 for i=1:size(k1,1)
@@ -60,39 +62,46 @@ end
 
 %球 theta phi
 center=sum(points)/size(points,1);
-for i=1:size(points,1)
-    r(i)=norm(points(i,:)-center);
-    theta(i)=asin(Z(i)/r(i));
-    phi(i)=real(acos(X(i)/r(i)/cos(theta(i))));
-end
+% for i=1:size(points,1)
+%     r(i)=norm(points(i,:)-center);
+%     theta(i)=real(asin(Z(i)/r(i)));
+%     phi(i)=real(acos(X(i)/r(i)/cos(theta(i))));
+% end
+tep=points-repmat(center,size(X,1),1);
+[phi,theta,~] = cart2sph(tep(:,1),tep(:,2),tep(:,3));
 
 figure
-pcshow([theta',phi',dist'],"MarkerSize",40)
+pcshow([theta,phi,dist'],"MarkerSize",40)
+title('dist_theta_phi')
 % figure
 % surf(theta',phi',dist')
 
 %三维点生成mesh
 tri=delaunay(theta,phi);
+figure
 trimesh(tri,theta,phi,dist);
-TO = triangulation(tri,theta',phi',dist');
+TO = triangulation(tri,theta,phi,dist');
 
 %找谷
 %周期性延拓
-distM=[theta' phi' dist'];
+distM=[theta phi dist'];
 % distMpro = repmat(distM,9,1);
 distMpro=[];
 for i=-1:1
     for j=-1:1
         tmp=distM;
-        tmp=[tmp(:,1)+i*pi,tmp(:,2)+j*pi,tmp(:,3)];
+        tmp=[tmp(:,1)+i*pi,tmp(:,2)+j*2*pi,tmp(:,3)];
         distMpro=[distMpro;tmp];
     end
 end
-tri=delaunay(distMpro);
-trimesh(tri,distMpro);
+% tri=delaunay(distMpro);
+% trimesh(tri,distMpro);
 % fx = gradient(dist)
-
-
+tri=delaunay(distMpro(:,1),distMpro(:,2));
+trimesh(tri,distMpro(:,1),distMpro(:,2),distMpro(:,3));
+figure;
+pcshow(distMpro,"MarkerSize",40);
+title('distMpro')
 
 
 % map=dist;
@@ -102,6 +111,7 @@ trimesh(tri,distMpro);
 
 figure;
 pcshow([X(:),Y(:),Z(:)],dist,"MarkerSize",40);
+title('xyz_dist')
 
 % plot(1:length(dist),dist)
 
