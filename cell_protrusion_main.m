@@ -5,6 +5,7 @@
 clear
 close all
 addpath(genpath(pwd))
+threshold = 0.05;
 
 %%
 % file = gunzip('datasets\Sample07_088_segCell.nii.gz');%change
@@ -44,9 +45,9 @@ addpath(genpath(pwd))
 % bind=unique(k);
 % % figure
 % % pcshow([X(bind),Y(bind),Z(bind)],"MarkerSize",100);
-% figure
-% trisurf(k,X(:),Y(:),Z(:),'Facecolor','cyan','FaceAlpha',0.1)
-% axis equal
+figure
+trisurf(k,X(:),Y(:),Z(:),'Facecolor','cyan','FaceAlpha',0.1)
+axis equal
 % points=[X(bind),Y(bind),Z(bind)];
 
 %%
@@ -90,27 +91,48 @@ end
 %     end
 % end
 % k=new_mesh;
+
 % tri=delaunay(points(:,1),points(:,2));
 % trimesh(tri,points(:,1),points(:,2),points(:,3));
+
 %合并点，找protrusions
 coinPointsInd=find(dist==0);%原图与convexhull重合点的索引
 protrusions=[];
-for i=1:length(coinPointsInd)
-    [row,col]=find(k==coinPointsInd(i));%找dist=0的点所在的同一个mesh中的点
-    temp_k=k(row,:);%找第i点所在的同一个mesh中的点
-    pointsInd_temp=unique(temp_k(find(temp_k~=coinPointsInd(i))));%与第i个点同在一个mesh的所有点
-    zeroNum_temp=length(find(dist(pointsInd_temp)==0));%距离为0的点的数量
-    nonzeroNum_temp=length(find(dist(pointsInd_temp)~=0));
-    if zeroNum_temp<3%||nonzeroNum_temp/(zeroNum_temp+nonzeroNum_temp)>0.1 %nonzeroNum_temp>=5
-        protrusions=[protrusions;coinPointsInd(i)];
-    end
+
+G = mesh2graph(k);
+zeroNeibour={};
+for i = 1:length(coinPointsInd)
+    zeroNeibour{coinPointsInd(i)}= [];
+    zeroNeibour{coinPointsInd(i)}= findZeroNeighbour(coinPointsInd(i),zeroNeibour{coinPointsInd(i)},G,dist,threshold);
 end
 
+% for i=1:length(coinPointsInd)
+%     [row,col]=find(k==coinPointsInd(i));%找dist=0的点所在的同一个mesh中的点
+%     temp_k=k(row,:);%找第i点所在的所有mesh面
+%     pointsInd_temp=unique(temp_k(temp_k~=coinPointsInd(i)));%与第i个点同在一个mesh的所有点
+%     zeroNum_temp=length(find(dist(pointsInd_temp)==0));%距离为0的点的数量
+%     nonzeroNum_temp=length(find(dist(pointsInd_temp)~=0));
+%     if zeroNum_temp<3%||nonzeroNum_temp/(zeroNum_temp+nonzeroNum_temp)>0.1 %nonzeroNum_temp>=5
+%         protrusions=[protrusions;coinPointsInd(i)];
+%     end
+% end
+
 mycolor=zeros(1,size(dist,2));
-mycolor(protrusions)=200;
+for i=1:size(zeroNeibour,2)
+    mycolor(zeroNeibour{i})=i;
+end
+
+
+% mycolor=zeros(1,size(dist,2));
+% mycolor(protrusions)=200;
 figure;
 pcshow(points,mycolor,"MarkerSize",100);
 % title('xyz_protrusions')
+
+figure
+trisurf(k,X,Y,Z,mycolor)
+axis equal
+% title('convexhull')
 
 
 % convhullIdx=unique(k1);
