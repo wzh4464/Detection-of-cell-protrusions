@@ -30,8 +30,29 @@ addpath(genpath(pwd))
 % % end
 
 %%
+%cell name ABalapa
+% V = niftiread('datasets\data\191108plc1p1_053_segCell.nii');
+% index = unique(V);
+% V1=V;
+% V1(find(V~=65))=0;
+% % figure
+% % h=volshow(V1);
+% [X,Y,Z]=voxel2XYZ(V1);
+% %     figure
+% %     pcshow([X(:),Y(:),Z(:)]);
+% k = boundary(X(:),Y(:),Z(:));%cell surface mesh
+% bind=unique(k);
+% % figure
+% % pcshow([X(bind),Y(bind),Z(bind)],"MarkerSize",100);
+% figure
+% trisurf(k,X(:),Y(:),Z(:),'Facecolor','cyan','FaceAlpha',0.1)
+% axis equal
+% points=[X(bind),Y(bind),Z(bind)];
+
+%%
 %导入三维点，开始计算凸包，计算距离
-load('Jun15cell.mat')
+load('k.mat')
+load('ABalapa.mat')
 X=points(:,1);
 Y=points(:,2);
 Z=points(:,3);
@@ -61,6 +82,36 @@ for i=1:length(X)
     t(i)=(solve(plane(i),1:3)*[X(i) Y(i) Z(i)]'-1)/(norm(solve(plane(i),1:3))^2);
     proj(i,1:3)=[X(i) Y(i) Z(i)]-solve(plane(i),1:3)*t(i);
 end
+
+% %把老的mesh索引转到new_mesh上面
+% for i=1:size(k,1)
+%     for j=1:3
+%         new_mesh(i,j)=find(bind==k(i,j));
+%     end
+% end
+% k=new_mesh;
+% tri=delaunay(points(:,1),points(:,2));
+% trimesh(tri,points(:,1),points(:,2),points(:,3));
+%合并点，找protrusions
+coinPointsInd=find(dist==0);%原图与convexhull重合点的索引
+protrusions=[];
+for i=1:length(coinPointsInd)
+    [row,col]=find(k==coinPointsInd(i));%找dist=0的点所在的同一个mesh中的点
+    temp_k=k(row,:);%找第i点所在的同一个mesh中的点
+    pointsInd_temp=unique(temp_k(find(temp_k~=coinPointsInd(i))));%与第i个点同在一个mesh的所有点
+    zeroNum_temp=length(find(dist(pointsInd_temp)==0));%距离为0的点的数量
+    nonzeroNum_temp=length(find(dist(pointsInd_temp)~=0));
+    if zeroNum_temp<3%||nonzeroNum_temp/(zeroNum_temp+nonzeroNum_temp)>0.1 %nonzeroNum_temp>=5
+        protrusions=[protrusions;coinPointsInd(i)];
+    end
+end
+
+mycolor=zeros(1,size(dist,2));
+mycolor(protrusions)=200;
+figure;
+pcshow(points,mycolor,"MarkerSize",100);
+% title('xyz_protrusions')
+
 
 % convhullIdx=unique(k1);
 % Cpoints=points(convhullIdx,:);
