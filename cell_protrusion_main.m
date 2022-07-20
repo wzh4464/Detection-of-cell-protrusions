@@ -7,11 +7,54 @@ close all
 addpath(genpath(pwd))
 threshold = 0.05;
 
-%%
+%% mat from nature
+% load('surface_1_1.mat');
+vertices = surface.vertices;
+ori_mesh = surface.faces;
+points = vertices;
+% for i = 1:size(raw_points,1)
+%     for j = 1:size(raw_points,2)
+%         raw_points(i,j) = raw_points(i,j)+0.01*rand();
+%     end
+% end
+% k = boundary(raw_points);
+% bind=unique(k);
+% raw_points=[X(bind),Y(bind),Z(bind)];
+figure
+pcshow(points,"MarkerSize",100);
+figure
+trisurf(ori_mesh,points(:,1),points(:,2),points(:,3),'Facecolor','red','FaceAlpha',0.1)
+
+%% load from tif
+% close all
+% V = tiffreadVolume('1_CAM01_000000.tif');
+% figure
+% slice(double(V),size(V,2)/2,size(V,1)/2,size(V,3)/2)
+% colormap gray 
+% shading interp
+% thr = [0.01]
+% for i = -5:1:0
+%     J = imbinarize(V,'adaptive','ForegroundPolarity','bright','Sensitivity',10^(i));
+%     % J = imbinarize(V,'global')*255;
+%     % J = 255-V;
+%     % figure
+%     % slice(double(J),size(J,2)/2,size(J,1)/2,size(J,3)/2)
+%     % colormap gray
+%     % shading interp
+%     figure
+%     volshow(J);
+% end
+% BW = imbinarize(V)*255;
+% h=volshow(BW);
+% V = tiffreadVolume('1_CAM01_000000.tif','PixelRegion',{rows,columns,slices});
+% v1 = V(:,:,1);
+% b1 = BW(:,:,75);
+% [x,y,z]=find(BW == 0);
+%% nii to XYZ(boundary)
 % file = gunzip('datasets\Sample07_088_segCell.nii.gz');%change
 % V = niftiread('datasets\data\Sample04_004_segCell.nii');
 % index = unique(V);
-% 
+%
 % %3 1608 2796 3931 5543 6591
 % % for i=2:length(index)
 %     V1=V;
@@ -30,6 +73,27 @@ threshold = 0.05;
 % %     g=volshow(V1);
 % % end
 
+%% whole XYZ to boundary
+% % points read todo
+% load Sample06_024_ABalp.txt
+% points = Sample06_024_ABalp;
+% for i = 1:size(points,1)
+%     for j = 1:size(points,2)
+%         points(i,j) = points(i,j)+0.01*rand();
+%     end
+% end
+% k = boundary(points);
+% bind=unique(k);
+% X=points(:,1);
+% Y=points(:,2);
+% Z=points(:,3);
+% % points=[X(bind),Y(bind),Z(bind)];
+% figure
+% pcshow([X(bind),Y(bind),Z(bind)],"MarkerSize",100);
+% figure
+% trisurf(k,points(:,1),points(:,2),points(:,3),'Facecolor','red','FaceAlpha',0.1)
+% points=[X(bind),Y(bind),Z(bind)];
+
 %%
 %cell name ABalapa
 % V = niftiread('datasets\data\191108plc1p1_053_segCell.nii');
@@ -45,38 +109,46 @@ threshold = 0.05;
 % bind=unique(k);
 % % figure
 % % pcshow([X(bind),Y(bind),Z(bind)],"MarkerSize",100);
-figure
-trisurf(k,X(:),Y(:),Z(:),'Facecolor','cyan','FaceAlpha',0.1)
-axis equal
+% figure
+% trisurf(k,X(:),Y(:),Z(:),'Facecolor','cyan','FaceAlpha',0.1)
+% axis equal
 % points=[X(bind),Y(bind),Z(bind)];
 
 %%
 %导入三维点，开始计算凸包，计算距离
-load('k.mat')
-load('ABalapa.mat')
+% load('k.mat')
+% load('ABalapa.mat')
 X=points(:,1);
 Y=points(:,2);
 Z=points(:,3);
-[k1,av1] = convhull(X,Y,Z);
+point_num = size(points,1);
+[cv_mesh,~] = convhull(points(:,1),points(:,2),points(:,3));
+cv_face_num = size(cv_mesh,1);
 figure
-trisurf(k1,X,Y,Z,'FaceColor','cyan')
+trisurf(cv_mesh,X,Y,Z,'FaceColor','cyan')
 axis equal
 title('convexhull')
 
-
+%%
 % 求解Convex Hull平面的方程 Ax + By + Cz = 1
-solve=[];
-for i=1:size(k1,1)
-    A=[X(k1(i,1)) Y(k1(i,1)) Z(k1(i,1))
-    X(k1(i,2)) Y(k1(i,2)) Z(k1(i,2))
-    X(k1(i,3)) Y(k1(i,3)) Z(k1(i,3))];
+solve=zeros(cv_face_num,3);
+for i=1:cv_face_num
+    A=[X(cv_mesh(i,1)) Y(cv_mesh(i,1)) Z(cv_mesh(i,1))
+        X(cv_mesh(i,2)) Y(cv_mesh(i,2)) Z(cv_mesh(i,2))
+        X(cv_mesh(i,3)) Y(cv_mesh(i,3)) Z(cv_mesh(i,3))];
     B=[1;1;1];
-    solve(i,1:3)=(A\B)';
+    solve(i,:)=(A\B)';
 end
 
-% 寻找射影点
+tmp = abs(solve*points'-1);
+nrm = sum(abs(solve).^2,2).^(1/2);
+temp = tmp./repmat(nrm,1,point_num);
+min(temp,2);
+
+% 寻找射影点 
+temp=zeros(length(X),size(cv_mesh,1));
 for i=1:length(X)
-    for j=1:size(k1,1)
+    for j=1:size(cv_mesh,1)
         temp(i,j)=abs(solve(j,1:3)*[X(i) Y(i) Z(i)]'-1)/norm(solve(j,1:3));
     end
     [dist(i),plane(i)]=min(temp(i,:));
@@ -84,14 +156,15 @@ for i=1:length(X)
     proj(i,1:3)=[X(i) Y(i) Z(i)]-solve(plane(i),1:3)*t(i);
 end
 
-% %把老的mesh索引转到new_mesh上面
-% for i=1:size(k,1)
-%     for j=1:3
-%         new_mesh(i,j)=find(bind==k(i,j));
-%     end
-% end
-% k=new_mesh;
+%% 把老的mesh索引转到new_mesh上面
+for i=1:size(ori_mesh,1)
+    for j=1:3
+        new_mesh(i,j)=find(bind==ori_mesh(i,j));
+    end
+end
+ori_mesh=new_mesh;
 
+%%
 % tri=delaunay(points(:,1),points(:,2));
 % trimesh(tri,points(:,1),points(:,2),points(:,3));
 
@@ -99,7 +172,7 @@ end
 coinPointsInd=find(dist==0);%原图与convexhull重合点的索引
 protrusions=[];
 
-G = mesh2graph(k);
+G = mesh2graph(ori_mesh);
 zeroNeibour={};
 for i = 1:length(coinPointsInd)
     zeroNeibour{coinPointsInd(i)}= [];
@@ -130,7 +203,7 @@ pcshow(points,mycolor,"MarkerSize",100);
 % title('xyz_protrusions')
 
 figure
-trisurf(k,X,Y,Z,mycolor)
+trisurf(ori_mesh,X,Y,Z,mycolor)
 axis equal
 % title('convexhull')
 
@@ -208,7 +281,7 @@ title('scalar gradient')
 
 % threshold = 0.05;
 % I=find(z_center<threshold & z_center~=0);
-% 
+%
 % figure;
 % scatter3(distM(I,1),distM(I,2),distM(I,3));
 
