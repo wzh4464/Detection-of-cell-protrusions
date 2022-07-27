@@ -8,7 +8,7 @@ addpath(genpath(pwd))
 threshold = 0.05;
 
 %% mat from nature
-% load('surface_1_1.mat');
+load('surface_1.mat');
 vertices = surface.vertices;
 ori_mesh = surface.faces;
 points = vertices;
