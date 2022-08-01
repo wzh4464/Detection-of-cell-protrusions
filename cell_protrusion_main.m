@@ -8,9 +8,9 @@ addpath(genpath(pwd))
 threshold = 0.05;
 
 %% mat from nature
-load('surface_1.mat');
+load('surface_1_1.mat');
 vertices = surface.vertices;
-ori_mesh = surface.faces;
+ori_faces = surface.faces;
 points = vertices;
 % for i = 1:size(raw_points,1)
 %     for j = 1:size(raw_points,2)
@@ -23,7 +23,7 @@ points = vertices;
 figure
 pcshow(points,"MarkerSize",100);
 figure
-trisurf(ori_mesh,points(:,1),points(:,2),points(:,3),'Facecolor','red','FaceAlpha',0.1)
+trisurf(ori_faces,points(:,1),points(:,2),points(:,3),'Facecolor','red','FaceAlpha',0.1)
 
 %% load from tif
 % close all
@@ -121,7 +121,6 @@ trisurf(ori_mesh,points(:,1),points(:,2),points(:,3),'Facecolor','red','FaceAlph
 X=points(:,1);
 Y=points(:,2);
 Z=points(:,3);
-point_num = size(points,1);
 [cv_mesh,~] = convhull(points(:,1),points(:,2),points(:,3));
 cv_face_num = size(cv_mesh,1);
 figure
@@ -151,46 +150,52 @@ temp = tmp./nrm;
 t=(sum(solve(plane,:).*points,2)-1)./nrm(plane).^2;%除了两次
 proj=points-solve(plane,:).*t;
 
-for i=1:point_num
-%     if find(temp5==i)
-%         continue
-%     end
+%%
+neib=cell(point_num,1);
+p = parpool(8);
+parfor i=1:point_num
     [temp1,~] = find(ori_faces==i);
-    temp2 = unique(ori_faces(temp1,:));%找每个点的相同面上的点的索引
-    neib{i}=temp2;
-%     temp5=[temp5;temp2];
-    temp2(temp2==i) = [];
-    [temp3,temp4] = min(dist(temp2));%每个点相同面上的距离最小的点
+    neib{i} = unique(ori_faces(temp1,:));%找每个点的相同面上的点的索引
+    neib{i}(neib{i}==i) = [];
+end
+delete(p);
+%% 
+best = zeros(1,5000);
+j=0;
+for i=1:point_num
+    [temp3,~] = min(dist(neib{i}));%每个点相同面上的距离最小的点
 %     diff(i)=dist(i)-dist(temp4);
-    if dist(i)<=temp3 && dist(i)==0
-        %if dist(i)==dist(temp4)
-        best=[best i];
-        %end
+    if dist(i)<=temp3
+        j = j+1;
+        best(j)=i;
     end
 end
+best = best(1:j);
+figure
+pcshow(points(best,:))
 
-%% 把老的mesh索引转到new_mesh上面
-for i=1:size(ori_mesh,1)
-    for j=1:3
-        new_mesh(i,j)=find(bind==ori_mesh(i,j));
-    end
-end
-ori_mesh=new_mesh;
+% %% 把老的mesh索引转到new_mesh上面
+% for i=1:size(ori_faces,1)
+%     for j=1:3
+%         new_mesh(i,j)=find(bind==ori_faces(i,j));
+%     end
+% end
+% ori_faces=new_mesh;
 
 %%
 % tri=delaunay(points(:,1),points(:,2));
 % trimesh(tri,points(:,1),points(:,2),points(:,3));
 
-%合并点，找protrusions
-coinPointsInd=find(dist==0);%原图与convexhull重合点的索引
-protrusions=[];
-
-G = mesh2graph(ori_mesh);
-zeroNeibour={};
-for i = 1:length(coinPointsInd)
-    zeroNeibour{coinPointsInd(i)}= [];
-    zeroNeibour{coinPointsInd(i)}= findZeroNeighbour(coinPointsInd(i),zeroNeibour{coinPointsInd(i)},G,dist,threshold);
-end
+% %合并点，找protrusions
+% coinPointsInd=find(dist==0);%原图与convexhull重合点的索引
+% protrusions=[];
+% 
+% G = mesh2graph(ori_faces);
+% zeroNeibour={};
+% for i = 1:length(coinPointsInd)
+%     zeroNeibour{coinPointsInd(i)}= [];
+%     zeroNeibour{coinPointsInd(i)}= findZeroNeighbour(coinPointsInd(i),zeroNeibour{coinPointsInd(i)},G,dist,threshold);
+% end
 
 % for i=1:length(coinPointsInd)
 %     [row,col]=find(k==coinPointsInd(i));%找dist=0的点所在的同一个mesh中的点
@@ -202,132 +207,132 @@ end
 %         protrusions=[protrusions;coinPointsInd(i)];
 %     end
 % end
-
-mycolor=zeros(1,size(dist,2));
-for i=1:size(zeroNeibour,2)
-    mycolor(zeroNeibour{i})=i;
-end
-
-
+% %% drawing
 % mycolor=zeros(1,size(dist,2));
-% mycolor(protrusions)=200;
-figure;
-pcshow(points,mycolor,"MarkerSize",100);
-% title('xyz_protrusions')
-
-figure
-trisurf(ori_mesh,X,Y,Z,mycolor)
-axis equal
-% title('convexhull')
-
-
-% convhullIdx=unique(k1);
-% Cpoints=points(convhullIdx,:);
-
-%k1叫不到原来points里的冗余点
-
-%球 theta phi
-center=sum(points)/size(points,1);
-% for i=1:size(points,1)
-%     r(i)=norm(points(i,:)-center);
-%     theta(i)=real(asin(Z(i)/r(i)));
-%     phi(i)=real(acos(X(i)/r(i)/cos(theta(i))));
+% for i=1:size(zeroNeibour,2)
+%     mycolor(zeroNeibour{i})=i;
 % end
-
-
-% 把投影点转化为球坐标
-tep=proj-repmat(center,size(X,1),1);
-[phi,theta,~] = cart2sph(tep(:,1),tep(:,2),tep(:,3));
-
-figure
-pcshow([theta,phi,dist'],"MarkerSize",40)
-title('dist_theta_phi')
-% figure
-% surf(theta',phi',dist')
-
-%三维点生成mesh
-% tri=delaunay(theta,phi);
-% figure
-% trimesh(tri,theta,phi,dist);
-% TO = triangulation(tri,theta,phi,dist');
-
-%找谷
-%周期性延拓
-distM=[theta phi dist'];
-% distMpro = repmat(distM,9,1);
-distMpro=[];
-for i=-1:1
-    for j=-1:1
-        tmp=distM;
-        tmp=[tmp(:,1)+i*pi,tmp(:,2)+j*2*pi,tmp(:,3)];
-        distMpro=[distMpro;tmp];
-    end
-end
-% tri=delaunay(distMpro);
-% trimesh(tri,distMpro);
-% fx = gradient(dist)
-
-% 延拓后的 mesh
-tri=delaunay(distMpro(:,1),distMpro(:,2));
-% trimesh(tri,distMpro(:,1),distMpro(:,2),distMpro(:,3));
-[zx,zy] = trigradient(distMpro(:,1),distMpro(:,2),distMpro(:,3),tri); % 梯度
-z = sqrt(zx.^2+zy.^2); % 标量梯度
-
-figure;
-pcshow(distMpro,z,"MarkerSize",100);
-title('梯度温度')
-
-
-
-z_center=z(size(X,1)*4+1:size(X,1)*5,:);% 原距离的标量梯度
-% figure
-% sorted=sort(z_center);
-% plot(1:length(z_center),sorted);
-
+% 
+% 
+% % mycolor=zeros(1,size(dist,2));
+% % mycolor(protrusions)=200;
 % figure;
-% pcshow(distM,z_center,"MarkerSize",100);
-% title('distMpro')
-
-figure;
-scatter3(distM(:,1),distM(:,2),z_center);
-title('scalar gradient')
-
+% pcshow(points,mycolor,"MarkerSize",100);
+% % title('xyz_protrusions')
+% 
+% figure
+% trisurf(ori_faces,X,Y,Z,mycolor)
+% axis equal
+% % title('convexhull')
+% 
+% 
+% % convhullIdx=unique(k1);
+% % Cpoints=points(convhullIdx,:);
+% 
+% %k1叫不到原来points里的冗余点
+% 
+% %球 theta phi
+% center=sum(points)/size(points,1);
+% % for i=1:size(points,1)
+% %     r(i)=norm(points(i,:)-center);
+% %     theta(i)=real(asin(Z(i)/r(i)));
+% %     phi(i)=real(acos(X(i)/r(i)/cos(theta(i))));
+% % end
+% 
+% 
+% % 把投影点转化为球坐标
+% tep=proj-repmat(center,size(X,1),1);
+% [phi,theta,~] = cart2sph(tep(:,1),tep(:,2),tep(:,3));
+% 
+% figure
+% pcshow([theta,phi,dist'],"MarkerSize",40)
+% title('dist_theta_phi')
+% % figure
+% % surf(theta',phi',dist')
+% 
+% %三维点生成mesh
+% % tri=delaunay(theta,phi);
+% % figure
+% % trimesh(tri,theta,phi,dist);
+% % TO = triangulation(tri,theta,phi,dist');
+% 
+% %找谷
+% %周期性延拓
+% distM=[theta phi dist'];
+% % distMpro = repmat(distM,9,1);
+% distMpro=[];
+% for i=-1:1
+%     for j=-1:1
+%         tmp=distM;
+%         tmp=[tmp(:,1)+i*pi,tmp(:,2)+j*2*pi,tmp(:,3)];
+%         distMpro=[distMpro;tmp];
+%     end
+% end
+% % tri=delaunay(distMpro);
+% % trimesh(tri,distMpro);
+% % fx = gradient(dist)
+% 
+% % 延拓后的 mesh
+% tri=delaunay(distMpro(:,1),distMpro(:,2));
+% % trimesh(tri,distMpro(:,1),distMpro(:,2),distMpro(:,3));
+% [zx,zy] = trigradient(distMpro(:,1),distMpro(:,2),distMpro(:,3),tri); % 梯度
+% z = sqrt(zx.^2+zy.^2); % 标量梯度
+% 
+% figure;
+% pcshow(distMpro,z,"MarkerSize",100);
+% title('梯度温度')
+% 
+% 
+% 
+% z_center=z(size(X,1)*4+1:size(X,1)*5,:);% 原距离的标量梯度
+% % figure
+% % sorted=sort(z_center);
+% % plot(1:length(z_center),sorted);
+% 
+% % figure;
+% % pcshow(distM,z_center,"MarkerSize",100);
+% % title('distMpro')
+% 
+% figure;
+% scatter3(distM(:,1),distM(:,2),z_center);
+% title('scalar gradient')
+% 
+% % threshold = 0.05;
+% % I=find(z_center<threshold & z_center~=0);
+% %
+% % figure;
+% % scatter3(distM(I,1),distM(I,2),distM(I,3));
+% 
 % threshold = 0.05;
-% I=find(z_center<threshold & z_center~=0);
-%
+% I=find(z<threshold & z~=0); % index of 梯度小 -> 去掉未连接的点
+% J=find(distMpro(:,3)~=0); % index of 高度小 -> 凸包上的点
+% I=intersect(I,J);
+% 
+% % for i=1:length(I)
+% %     find(k1==I(i))
+% %     if I(i)
+% % end
+% 
 % figure;
-% scatter3(distM(I,1),distM(I,2),distM(I,3));
-
-threshold = 0.05;
-I=find(z<threshold & z~=0); % index of 梯度小 -> 去掉未连接的点
-J=find(distMpro(:,3)~=0); % index of 高度小 -> 凸包上的点
-I=intersect(I,J);
-
-% for i=1:length(I)
-%     find(k1==I(i))
-%     if I(i)
-% end
-
-figure;
-scatter3(distMpro(I,1),distMpro(I,2),distMpro(I,3));
-title('zero points height')
-% find(tri=)
-% hold on
-% quiver3(distMpro(:,1),distMpro(:,2),distMpro(:,3),zx,zy,zeros(size(zx,1),1))
-% hold off
-
-
-
-% map=dist;
-% colormap(map)
-% figure
-% plot3(X,Y,Z)
-
-figure;
-pcshow(points,dist,"MarkerSize",40);
-title('xyz_dist')
-
-% plot(1:length(dist),dist)
+% scatter3(distMpro(I,1),distMpro(I,2),distMpro(I,3));
+% title('zero points height')
+% % find(tri=)
+% % hold on
+% % quiver3(distMpro(:,1),distMpro(:,2),distMpro(:,3),zx,zy,zeros(size(zx,1),1))
+% % hold off
+% 
+% 
+% 
+% % map=dist;
+% % colormap(map)
+% % figure
+% % plot3(X,Y,Z)
+% 
+% figure;
+% pcshow(points,dist,"MarkerSize",40);
+% title('xyz_dist')
+% 
+% % plot(1:length(dist),dist)
 
 
 
