@@ -140,20 +140,33 @@ for i=1:cv_face_num
     solve(i,:)=(A\B)';
 end
 
+%求距离和投影
+point_num = size(points,1);
 tmp = abs(solve*points'-1);
-nrm = sum(abs(solve).^2,2).^(1/2);
-temp = tmp./repmat(nrm,1,point_num);
-min(temp,2);
+nrm = (sum(abs(solve).^2,2)).^(1/2);%一行一行（逐行）norm
+% temp = tmp./repmat(nrm,1,point_num);%
+temp = tmp./nrm;
+[dist,plane]=min(temp);%细胞表面的点到最近的一个凸包面的距离
+% nrm1 = (sum(abs(solve(plane,:)).^2,2)).^(1/2);%一行一行（逐行）norm
+t=(sum(solve(plane,:).*points,2)-1)./nrm(plane).^2;%除了两次
+proj=points-solve(plane,:).*t;
 
-% 寻找射影点 
-temp=zeros(length(X),size(cv_mesh,1));
-for i=1:length(X)
-    for j=1:size(cv_mesh,1)
-        temp(i,j)=abs(solve(j,1:3)*[X(i) Y(i) Z(i)]'-1)/norm(solve(j,1:3));
+for i=1:point_num
+%     if find(temp5==i)
+%         continue
+%     end
+    [temp1,~] = find(ori_faces==i);
+    temp2 = unique(ori_faces(temp1,:));%找每个点的相同面上的点的索引
+    neib{i}=temp2;
+%     temp5=[temp5;temp2];
+    temp2(temp2==i) = [];
+    [temp3,temp4] = min(dist(temp2));%每个点相同面上的距离最小的点
+%     diff(i)=dist(i)-dist(temp4);
+    if dist(i)<=temp3 && dist(i)==0
+        %if dist(i)==dist(temp4)
+        best=[best i];
+        %end
     end
-    [dist(i),plane(i)]=min(temp(i,:));
-    t(i)=(solve(plane(i),1:3)*[X(i) Y(i) Z(i)]'-1)/(norm(solve(plane(i),1:3))^2);
-    proj(i,1:3)=[X(i) Y(i) Z(i)]-solve(plane(i),1:3)*t(i);
 end
 
 %% 把老的mesh索引转到new_mesh上面

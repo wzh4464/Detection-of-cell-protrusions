@@ -24,8 +24,8 @@ function [connectSet,num]=union_zero_fast(best,neib)
 %     for i=1:length(best) % merge best中每个值和其edge邻接
 %         con
 %     end
-    parfor i=1:length(neib)
-        stan(i)=i
+    for i=1:length(neib)
+        stan(i)=i;
     end
     num=size(find(connectDS.set==stan),2);
     connectSet=connectDS.set;
