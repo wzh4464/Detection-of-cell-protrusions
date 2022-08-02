@@ -82,4 +82,6 @@ protrusion_rep(protrusion_rep==0)=[];
 %     construct_graph_relation
 
 %%
-face_neib = construct_graph_relation(neib,ori_faces); %% face_num * 3
+% face_neib = construct_graph_relation(neib,ori_faces); %% face_num * 3
+TR = triangulation(ori_faces,points);
+face_neib = neighbors(TR);
