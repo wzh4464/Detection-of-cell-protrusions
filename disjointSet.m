@@ -28,8 +28,8 @@ classdef disjointSet < handle
 %                 x
 %             end
 %             disp(x)
-            if obj.set(x)==x
-                index = x;
+            if obj.set(x)==x || obj.set(x)==0
+                index = obj.set(x);
                 return
             end
             obj.set(x) = findDJ(obj,obj.set(x));

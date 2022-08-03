@@ -26,6 +26,7 @@ function [connectSet,num]=union_zero_fast(best,neib)
 %     end
     for i=1:length(neib)
         stan(i)=i;
+        connectDS.set(i)=connectDS.findDJ(i);
     end
     num=size(find(connectDS.set==stan),2);
     connectSet=connectDS.set;
