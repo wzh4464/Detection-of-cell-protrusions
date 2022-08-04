@@ -9,10 +9,10 @@ classdef disjointSet < handle
     end
 
     methods
-        function obj = disjointSet(best)
+        function obj = disjointSet(best,num)
             % 构造
             %   from best 数组
-            obj.set = zeros(1,length(best));
+            obj.set = zeros(1,num);
             for i=1:length(best)
 %                 if best(i)
                 obj.set(best(i))=best(i);

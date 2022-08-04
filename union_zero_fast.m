@@ -14,7 +14,8 @@ function [connectSet,num]=union_zero_fast(best,neib)
 %         end
 %     end % edges{i} 表示(i,edges{i})线段
 %     merge_count=0;
-    connectDS=disjointSet(best);
+    point_num = length(neib);
+    connectDS=disjointSet(best,point_num);
     for i=1:length(best) % merge best中每个值和其edge邻接
         for j=1:length(neib{best(i)})
 %             disp([i,j])
