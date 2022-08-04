@@ -57,8 +57,26 @@ parfor i=1:point_num
 end
 delete(p);
 
+%%Roger best
+
+%寻找邻接点，都比自己高的就是最小值
+
+TR = triangulation(ori_faces,points);
+face_neib = neighbors(TR);%所有面的相邻面
+G=meshs2graph(TR);
+neib=cell(1,point_num);
+best=[];
+for i=1:point_num
+    temp2 = neighbors(G,i);
+    neib{i}=temp2;
+    temp3 = min(dist(temp2));%每个点相同面上的距离最小的点
+    if dist(i)<=temp3 
+        best=[best i];
+    end
+end
+
 %% 
-best = zeros(1,5000);
+best = zeros(1,size(points,1));
 j=0;
 for i=1:point_num
     [temp3,~] = min(dist(neib{i}));%每个点相同面上的距离最小的点
@@ -83,5 +101,40 @@ protrusion_rep(protrusion_rep==0)=[];
 
 %%
 % face_neib = construct_graph_relation(neib,ori_faces); %% face_num * 3
-TR = triangulation(ori_faces,points);
-face_neib = neighbors(TR);
+% TR = triangulation(ori_faces,points);
+% face_neib = neighbors(TR);
+%以一个点为中心，扩展n轮面
+
+%% Roger 模范
+%合并连在一起的best点
+[disjoint_set,size_DS]=union_zero_fast(best,neib);
+
+blebSegment=zeros(size(ori_faces,1),1);
+points_color=unique(disjoint_set);%总共有x个点需要上色
+points_color(1)=[];
+face_extend_index=cell(1,length(points_color));
+
+for i=1:size(ori_faces,1)
+    depth(i)=sum(dist(ori_faces(i,:)))/3;
+end
+
+for i=1:length(points_color)%0不要
+    face_extend_index{i}=extends_protrusion_point(TR,face_neib,points_color(i),10,depth);
+end
+
+cancel_j=[];
+for i=1:length(points_color)-1
+    for j=i+1:length(points_color)
+        if ~isempty(intersect(face_extend_index{i}, face_extend_index{j}))
+%             face_extend_index{i}=union(face_extend_index{i},face_extend_index{j});
+            face_extend_index{j}=[];
+            cancel_j=[cancel_j j];
+%             points_color(j)=points_color(i);
+        end
+    end
+end
+points_color(cancel_j)=0;
+
+for i=1:length(points_color)%0不要
+    blebSegment(face_extend_index{i}')=points_color(i);
+end
