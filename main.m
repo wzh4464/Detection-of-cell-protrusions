@@ -1,25 +1,40 @@
+%% init and set path
 clear
 close all
 addpath(genpath(pwd))
 threshold = 0.05;
 
 %% mat from nature
+
+% surface is a mesh struct
+% surface is a struct with fields: vertices, faces
+% vertices is a n*3 matrix, n is the number of points
+% each row is a point, the first column is x, the second column is y, the third column is z
+% faces is a m*3 matrix, m is the number of faces
+% each row is a face, each column is the index of the point in vertices
+
 load('surface_1_1.mat');
+
 points = surface.vertices;
 ori_faces = surface.faces;
 ori_faces = sort(ori_faces,2);
+
 figure
+% use pcshow to show the point cloud
 pcshow(points,"MarkerSize",100);
+
 figure
+% use trisurf to show the surface as a mesh
 trisurf(ori_faces,points(:,1),points(:,2),points(:,3),'Facecolor','red','FaceAlpha',0.1)
 
-%%
-%导入三维点，开始计算凸包，计算距离
+%% calculate the convex hull
+
 X=points(:,1);
 Y=points(:,2);
 Z=points(:,3);
-[cv_mesh,~] = convhull(points(:,1),points(:,2),points(:,3));
-cv_face_num = size(cv_mesh,1);
+[cv_mesh,~] = convhull(X,Y,Z); % cv_mesh is the index of the points in the convex hull
+cv_face_num = size(cv_mesh,1); % number of faces of the convex hull
+
 % figure
 % trisurf(cv_mesh,X,Y,Z,'FaceColor','cyan')
 % axis equal
@@ -36,6 +51,7 @@ for i=1:cv_face_num
     solve(i,:)=(A\B)';
 end
 
+%% calculate the distance and projection
 %求距离和投影
 point_num = size(points,1);
 tmp = abs(solve*points'-1);
@@ -70,17 +86,17 @@ for i=1:point_num
     temp2 = neighbors(G,i);
     neib{i}=temp2;
     temp3 = min(dist(temp2));%每个点相同面上的距离最小的点
-    if dist(i)<=temp3 
+    if dist(i)<=temp3
         best=[best i];
     end
 end
 
-%% 
+%%
 best = zeros(1,size(points,1));
 j=0;
 for i=1:point_num
     [temp3,~] = min(dist(neib{i}));%每个点相同面上的距离最小的点
-%     diff(i)=dist(i)-dist(temp4);
+    %     diff(i)=dist(i)-dist(temp4);
     if dist(i)<=temp3
         j = j+1;
         best(j)=i;
@@ -126,10 +142,10 @@ cancel_j=[];
 for i=1:length(points_color)-1
     for j=i+1:length(points_color)
         if ~isempty(intersect(face_extend_index{i}, face_extend_index{j}))
-%             face_extend_index{i}=union(face_extend_index{i},face_extend_index{j});
+            %             face_extend_index{i}=union(face_extend_index{i},face_extend_index{j});
             face_extend_index{j}=[];
             cancel_j=[cancel_j j];
-%             points_color(j)=points_color(i);
+            %             points_color(j)=points_color(i);
         end
     end
 end
