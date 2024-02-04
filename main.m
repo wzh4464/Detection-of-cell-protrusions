@@ -49,7 +49,7 @@ proj=points-solve(plane,:).*t;
 
 %%
 neib=cell(point_num,1);
-p = parpool(8);
+p = parpool(4);
 parfor i=1:point_num
     [temp1,~] = find(ori_faces==i);
     neib{i} = unique(ori_faces(temp1,:));%找每个点的相同面上的点的索引
