@@ -19,13 +19,13 @@ points = surface.vertices;
 ori_faces = surface.faces;
 ori_faces = sort(ori_faces,2);
 
-figure
+% figure
 % use pcshow to show the point cloud
-pcshow(points,"MarkerSize",100);
+% pcshow(points,"MarkerSize",100);
 
-figure
+% figure
 % use trisurf to show the surface as a mesh
-trisurf(ori_faces,points(:,1),points(:,2),points(:,3),'Facecolor','red','FaceAlpha',0.1)
+% trisurf(ori_faces,points(:,1),points(:,2),points(:,3),'Facecolor','red','FaceAlpha',0.1)
 
 %% calculate the convex hull
 
@@ -65,7 +65,8 @@ proj=points-solve(plane,:).*t;
 
 %%
 neib=cell(point_num,1);
-p = parpool(4);
+num_cpu = feature('numCores');
+p = parpool(num_cpu);
 parfor i=1:point_num
     [temp1,~] = find(ori_faces==i);
     neib{i} = unique(ori_faces(temp1,:));%找每个点的相同面上的点的索引
@@ -103,8 +104,9 @@ for i=1:point_num
     end
 end
 best = best(1:j);
-figure
+f = figure('visible','off');
 pcshow(points(best,:))
+saveas(f, 'best_points.png')
 
 
 %% Union the connected parts
