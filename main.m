@@ -156,3 +156,17 @@ points_color(cancel_j)=0;
 for i=1:length(points_color)%0不要
     blebSegment(face_extend_index{i}')=points_color(i);
 end
+
+uniqueSegments = unique(blebSegment);
+numSegments = length(uniqueSegments);
+colors = hsv(numSegments); % 使用 HSV 颜色空间生成颜色
+
+pointColors = zeros(size(ori_faces, 1), 3); % 初始化颜色矩阵
+
+for i = 1:numSegments
+    segmentIndex = blebSegment == uniqueSegments(i);
+    pointColors(segmentIndex, :) = repmat(colors(i, :), sum(segmentIndex), 1);
+end
+
+figure
+pcshow(points, pointColors, 'MarkerSize', 100);
