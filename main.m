@@ -23,9 +23,9 @@ ori_faces = sort(ori_faces,2);
 % use pcshow to show the point cloud
 % pcshow(points,"MarkerSize",100);
 
-% figure
+figure
 % use trisurf to show the surface as a mesh
-% trisurf(ori_faces,points(:,1),points(:,2),points(:,3),'Facecolor','red','FaceAlpha',0.1)
+trisurf(ori_faces,points(:,1),points(:,2),points(:,3),'Facecolor','red','FaceAlpha',0.1)
 
 %% calculate the convex hull
 
@@ -159,14 +159,23 @@ end
 
 uniqueSegments = unique(blebSegment);
 numSegments = length(uniqueSegments);
-colors = hsv(numSegments); % 使用 HSV 颜色空间生成颜色
+colors = hsv(numSegments); % 使用 HSV 颜色图生成颜色，你也可以自定义颜色
 
-pointColors = zeros(size(ori_faces, 1), 3); % 初始化颜色矩阵
-
-for i = 1:numSegments
-    segmentIndex = blebSegment == uniqueSegments(i);
-    pointColors(segmentIndex, :) = repmat(colors(i, :), sum(segmentIndex), 1);
+figure;
+hold on;
+for i = 1:size(surface.faces, 1)
+    % 找到当前面的顶点索引和坐标
+    faceVertices = surface.vertices(surface.faces(i, :), :);
+    
+    % 根据 blebSegment 的值选择颜色
+    segmentIndex = find(uniqueSegments == blebSegment(i));
+    faceColor = colors(segmentIndex, :);
+    
+    % 绘制当前面
+    patch('Vertices', faceVertices, 'Faces', 1:3, 'FaceColor', faceColor, 'EdgeColor', 'none');
 end
-
-figure
-pcshow(points, pointColors, 'MarkerSize', 100);
+hold off;
+view(3); % 调整视角为三维
+axis equal; % 保持比例一致
+xlabel('X'); ylabel('Y'); zlabel('Z');
+title('Colored Mesh Based on blebSegment');
