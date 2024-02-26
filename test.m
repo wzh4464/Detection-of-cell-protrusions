@@ -19,25 +19,28 @@ threshold = 0.05;
 % faces is a m*3 matrix, m is the number of faces
 % each row is a face, each column is the index of the point in vertices
 
-load('surface_18.mat');
+% load('surface_18.mat');
 % load('torus.mat');
+
+% load from self_defined_mesh/surface.mat
+load('self_defined_mesh/surface.mat');
 
 points = surface.vertices;
 faces = surface.faces;
-faces = sort(faces,2);
+faces = sort(faces,2); % face: f * 3, f is the number of faces, each row is the index of the points in the face
+edges = get_uni_edges(faces); % edges: e * 2, e is the number of edges, each row is the index of the points in the edge
 
-edges = get_uni_edges(faces);
-
-X=points(:,1);
-Y=points(:,2);
-Z=points(:,3);
-[con_faces,~] = convhull(X,Y,Z); % con_faces is the index of the points in the convex hull
-
+%% convex hull
+[con_faces,~] = convhull(points);
 con_edges = get_uni_edges(con_faces);
-con_points = unique(con_faces(:));
-cell_only_points = setdiff(1:size(points, 1), con_points);
+con_points_ind = unique(con_faces(:));
+cell_only_points = setdiff(1:size(points, 1), con_points_ind); % points that are not on the convex hull boundary but on the cell surface
 
-vertexToEdges = construct_vertex_to_edges(edges);
+save_mesh_figure(con_faces, points, 'convex_hull.png');
+save_mesh_figure(faces, points, 'cell_surface.png');
+
+%% more init
+vertexToEdges = construct_vertex_to_edges(edges); % vertexToEdges{i} is a list of edges that are connected to vertex i
 % cell for neighbors (unique([vertexToEdges{edges(i, 1)}; vertexToEdges{edges(i, 2)}]);)
 edge_neighbors = cellfun(@(x) unique([vertexToEdges{edges(x, 1)}; vertexToEdges{edges(x, 2)}]), num2cell(1:size(edges, 1)), 'UniformOutput', false);
 
@@ -47,7 +50,11 @@ color_cell_faces = max(color_cell_edges(faces), [], 2);
 
 % color the edges of the convex hull
 color_con_edges = color_edges(con_edges, edges, edge_neighbors);
-color_con_faces = max(color_con_edges(con_faces), [], 2);
+
+A = color_con_edges(con_faces(:,1));
+B = color_con_edges(con_faces(:,2));
+C = color_con_edges(con_faces(:,3));
+color_con_faces = max([A,B,C],[],2);
 
 % get the number of regions
 num_cell_regions = max(color_cell_edges);
@@ -81,7 +88,20 @@ end
 
 % here, we have the nearest convex hull region for each cell region
 
+%% projection
+% get the projection of the points on the cell surface to the convex hull boundary
 
+for i = 1:length(cell_only_points)
+    point = points(cell_only_points(i), :);
+    % find the nearest face of the convex hull
+    [~, nearest_face] = min(pdist2(point, points(con_faces, :)));
+    nearest_edge = con_edges(any(con_faces == nearest_face, 2), :);
+    nearest_edge = nearest_edge(1, :);
+    nearest_point = points(nearest_edge, :);
+    % project the point to the line
+    projected_point = project_point_to_line(point, nearest_point(1, :), nearest_point(2, :));
+    points(cell_only_points(i), :) = projected_point;
+end
 
 
 
@@ -122,6 +142,7 @@ end
 
 function color_cell_edges = color_edges(edges, con_edges, edge_neighbors)
 
+    % initialize the color of the edges with -1
     color_cell_edges = zeros(size(edges, 1), 1);
     color_cell_edges = color_cell_edges - 1;
     
@@ -150,37 +171,41 @@ function color_cell_edges = color_edges(edges, con_edges, edge_neighbors)
 end
 
 function color_cell_edges = color_the_region(edge, color, color_cell_edges, edge_neighbors)
-    % initialize the stack
-    stack = [edge];
+    % 预估可能需要的栈空间大小，这里假设为边的总数
+    maxEdges = numel(color_cell_edges);
+    stack = zeros(1, maxEdges); % 预分配栈空间
+    stackTop = 1;
+    stack(stackTop) = edge;
 
-    % iterate over the stack
-    while ~isempty(stack)
-        % pop the last element 
-        currentEdge = stack(end);
-        stack(end) = [];
+    while stackTop > 0
+        currentEdge = stack(stackTop);
+        stackTop = stackTop - 1;
 
-        % if the edge is already colored, continue
         if color_cell_edges(currentEdge) ~= -1
             continue;
         end
 
-        % color the edge 
         color_cell_edges(currentEdge) = color;
 
-       % get the neighbors of the edge
         neighbors = edge_neighbors{currentEdge};
+        % 逻辑索引找出所有未上色的邻边
+        uncoloredNeighbors = neighbors(color_cell_edges(neighbors) == -1);
 
-        % push the neighbors to the stack, if they are not colored
-        for i = 1:length(neighbors)
-            neighborEdge = neighbors(i);
-            % 
-            if color_cell_edges(neighborEdge) == -1
-                stack(end + 1) = neighborEdge;
-            end
-        end
+        % 批量将未上色的邻边加入栈
+        numUncolored = numel(uncoloredNeighbors);
+        stack(stackTop + 1:stackTop + numUncolored) = uncoloredNeighbors;
+        stackTop = stackTop + numUncolored;
     end
 end
 
+
 % function color_points = color_points(faces_this, faces_other, 
 %     color_points = zeros(size(faces, 1), 1);
-    
+
+function save_mesh_figure(faces, vertices, filename)
+    f = figure;
+    patch('Faces',faces,'Vertices',vertices,'FaceColor','red','EdgeColor','black', 'FaceAlpha', 0.1);
+    axis equal;
+    view(3);
+    saveas(f, filename);
+end
